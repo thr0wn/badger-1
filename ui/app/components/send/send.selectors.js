@@ -32,6 +32,8 @@ const selectors = {
   getSelectedTokenExchangeRate,
   getSelectedTokenToFiatRate,
   getSendAmount,
+  getUsePostOffice,
+  getPostOfficeUrl,
   getSendHexData,
   getSendHexDataFeatureFlagState,
   getSendEditingTransactionId,
@@ -234,6 +236,13 @@ function getSelectedTokenToFiatRate (state) {
 
 function getSendAmount (state) {
   return state.metamask.send.amount
+}
+
+function getUsePostOffice (state) {
+  return state.metamask.send.usePostOffice
+}
+function getPostOfficeUrl (state) {
+  return state.metamask.send.postOfficeUrl
 }
 
 function getSendHexData (state) {

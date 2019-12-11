@@ -422,7 +422,6 @@ class TransactionController extends EventEmitter {
       // get next nonce
       const txMeta = this.txStateManager.getTx(txId)
       const fromAddress = txMeta.txParams.from
-
       // add nonce debugging information to txMeta
       this.txStateManager.updateTx(txMeta, 'transactions#approveTransaction')
       // sign transaction
@@ -520,13 +519,23 @@ class TransactionController extends EventEmitter {
           return utxo
         })
 
-        txHash = await bitboxUtils.signAndPublishSlpTransaction(
-          txParams,
-          spendableUtxos,
-          tokenMetadata,
-          spendableTokenUtxos,
-          slpAddress
-        )
+        if (!txParams.usePostOffice) {
+          txHash = await bitboxUtils.signAndPublishSlpTransaction(
+            txParams,
+            spendableUtxos,
+            tokenMetadata,
+            spendableTokenUtxos,
+            slpAddress
+          )
+        } else {
+          txHash = await bitboxUtils.signAndPublishPostOfficeSlpTransaction(
+            txParams,
+            spendableUtxos,
+            tokenMetadata,
+            spendableTokenUtxos,
+            slpAddress
+          )
+        }
       }
     } else if (txParams.paymentData) {
       txHash = await bitboxUtils.signAndPublishPaymentRequestTransaction(

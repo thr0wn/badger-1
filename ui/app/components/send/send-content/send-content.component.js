@@ -6,6 +6,7 @@ import SendFromRow from './send-from-row/'
 // import SendGasRow from './send-gas-row/'
 // import SendHexDataRow from './send-hex-data-row'
 import SendToRow from './send-to-row/'
+import SendPostOfficeRow from './send-post-office-row'
 
 export default class SendContent extends Component {
   static propTypes = {
@@ -29,6 +30,7 @@ export default class SendContent extends Component {
           <SendAmountRow
           // updateGas={(updateData) => this.props.updateGas(updateData)}
           />
+          <SendPostOfficeRow />
           {/* <SendGasRow />
           { this.props.showHexData ? <SendHexDataRow /> : null } */}
         </div>

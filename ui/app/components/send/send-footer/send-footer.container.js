@@ -18,6 +18,8 @@ import {
   getSendHexData,
   getTokenBalance,
   getUnapprovedTxs,
+  getUsePostOffice,
+  getPostOfficeUrl,
 } from '../send.selectors'
 import { isSendFormInError } from './send-footer.selectors'
 import {
@@ -43,19 +45,23 @@ function mapStateToProps (state) {
     toAccounts: getSendToAccounts(state),
     tokenBalance: getTokenBalance(state),
     unapprovedTxs: getUnapprovedTxs(state),
+    usePostOffice: getUsePostOffice(state),
+    postOfficeUrl: getPostOfficeUrl(state),
   }
 }
 
 function mapDispatchToProps (dispatch) {
   return {
     clearSend: () => dispatch(clearSend()),
-    sign: ({ selectedToken, to, amount, from, data }) => {
+    sign: ({ selectedToken, to, amount, from, data, usePostOffice, postOfficeUrl }) => {
       const txParams = constructTxParams({
         amount,
         data,
         from,
         selectedToken,
         to,
+        usePostOffice,
+        postOfficeUrl,
       })
 
       selectedToken
@@ -66,7 +72,7 @@ function mapDispatchToProps (dispatch) {
               amount,
               txParams,
               selectedToken.protocol,
-              selectedToken.symbol
+              selectedToken.symbol,
             )
           )
         : dispatch(signTx(txParams))

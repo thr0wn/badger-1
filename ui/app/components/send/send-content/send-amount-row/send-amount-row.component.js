@@ -32,7 +32,7 @@ export default class SendAmountRow extends Component {
     t: PropTypes.func,
   }
 
-  validateAmount (amount) {
+  validateAmount(amount) {
     const {
       amountConversionRate,
       balance,
@@ -70,14 +70,14 @@ export default class SendAmountRow extends Component {
     // }
   }
 
-  updateAmount (amount) {
+  updateAmount(amount) {
     const { updateSendAmount, setMaxModeTo } = this.props
 
     // setMaxModeTo(false)
     updateSendAmount(amount)
   }
 
-  updateGas (amount) {
+  updateGas(amount) {
     const { selectedToken, updateGas } = this.props
 
     if (selectedToken) {
@@ -85,7 +85,7 @@ export default class SendAmountRow extends Component {
     }
   }
 
-  render () {
+  render() {
     const {
       amount,
       amountConversionRate,

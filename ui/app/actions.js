@@ -199,6 +199,7 @@ var actions = {
   UPDATE_SEND_TOKEN_BALANCE: 'UPDATE_SEND_TOKEN_BALANCE',
   UPDATE_SEND_TO: 'UPDATE_SEND_TO',
   UPDATE_SEND_AMOUNT: 'UPDATE_SEND_AMOUNT',
+  UPDATE_USE_POST_OFFICE: 'UPDATE_USE_POST_OFFICE',
   UPDATE_SEND_MEMO: 'UPDATE_SEND_MEMO',
   UPDATE_SEND_ERRORS: 'UPDATE_SEND_ERRORS',
   UPDATE_MAX_MODE: 'UPDATE_MAX_MODE',
@@ -218,6 +219,7 @@ var actions = {
   updateSendHexData,
   updateSendTo,
   updateSendAmount,
+  updatePostOffice,
   updateSendMemo,
   setMaxModeTo,
   updateSend,
@@ -1058,6 +1060,13 @@ function updateSendAmount (amount) {
   return {
     type: actions.UPDATE_SEND_AMOUNT,
     value: amount,
+  }
+}
+
+function updatePostOffice (data) {
+  return {
+    type: actions.UPDATE_USE_POST_OFFICE,
+    ...data,
   }
 }
 

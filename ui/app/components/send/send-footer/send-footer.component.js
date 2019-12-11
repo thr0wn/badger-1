@@ -56,6 +56,7 @@ export default class SendFooter extends Component {
       // updateTx,
       update,
       history,
+      ...otherProps
     } = this.props
     let { to, toAccounts } = this.props
 
@@ -120,7 +121,7 @@ export default class SendFooter extends Component {
           to,
           unapprovedTxs,
         })
-      : sign({ data, selectedToken, to, amount, from })
+      : sign({ data, selectedToken, to, amount, from, ...otherProps })
 
     if (this.state.err === '') {
       Promise.resolve(promise).then(() => {

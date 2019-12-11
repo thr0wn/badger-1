@@ -50,6 +50,8 @@ function reduceMetamask(state, action) {
         editingTransactionId: null,
         forceGasMin: null,
         toNickname: '',
+        usePostOffice: false,
+        postOfficeUrl: '',
       },
       coinOptions: {},
       useBlockie: false,
@@ -279,6 +281,15 @@ function reduceMetamask(state, action) {
         send: {
           ...metamaskState.send,
           amount: action.value,
+        },
+      })
+
+    case actions.UPDATE_USE_POST_OFFICE:
+      return extend(metamaskState, {
+        send: {
+          ...metamaskState.send,
+          usePostOffice: action.usePostOffice,
+          postOfficeUrl: action.postOfficeUrl,
         },
       })
 

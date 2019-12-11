@@ -16,6 +16,7 @@ function constructTxParams ({
   from,
   gas,
   gasPrice,
+  ...otherProps
 }) {
   const txParams = {
     data,
@@ -23,6 +24,7 @@ function constructTxParams ({
     value: '0',
     gas,
     gasPrice,
+    ...otherProps,
   }
 
   txParams.value = amount

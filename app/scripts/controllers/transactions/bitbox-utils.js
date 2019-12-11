@@ -489,7 +489,7 @@ class BitboxUtils {
         
         // SLP data output
         transactionBuilder.addOutput(sendOpReturn, 0)
-        
+
         // Token destination output
         if(to) {
           if(Array.isArray(to)) {
@@ -581,6 +581,203 @@ class BitboxUtils {
           // Standard SLP
           txid = await this.publishTx(hex)
         }
+
+        resolve(txid)
+      } catch (err) {
+        console.log(err)
+        reject(err)
+      }
+    })
+  }
+
+  static signAndPublishPostOfficeSlpTransaction (
+    txParams,
+    spendableUtxos,
+    tokenMetadata,
+    spendableTokenUtxos,
+    tokenChangeAddress
+  ) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const from = txParams.from
+        // Get to addresses from payment request
+        if(!txParams.to && txParams.paymentRequestUrl) {
+          txParams.to = []
+          let outputs = txParams.paymentData.outputs
+          for(let i = 1; i < outputs.length; i++) {
+            txParams.to.push(bitbox.Address.fromOutputScript(Buffer.from(outputs[i].script, 'hex')))
+          }
+        }
+        const to = txParams.to
+        const tokenDecimals = tokenMetadata.decimals
+        const scaledTokenSendAmount = new BigNumber(
+          txParams.value
+        ).decimalPlaces(tokenDecimals)
+        const tokenSendAmount = scaledTokenSendAmount.times(10 ** tokenDecimals)
+
+        if (tokenSendAmount.lt(1)) {
+          throw new Error(
+            'Amount below minimum for this token. Increase the send amount and try again.'
+          )
+        }
+        
+        const sortedSpendableTokenUtxos = spendableTokenUtxos.sort((a, b) => {
+          const aQuantity = new BigNumber(a.slp.quantity)
+          const bQuantity = new BigNumber(b.slp.quantity)
+          if (aQuantity.eq(bQuantity)) return 0
+          else if (bQuantity.gt(aQuantity)) return 1
+          else return -1
+        })
+
+        let tokenBalance = new BigNumber(0)
+        const tokenUtxosToSpend = []
+        for (const tokenUtxo of sortedSpendableTokenUtxos) {
+          const utxoBalance = tokenUtxo.slp.quantity
+          tokenBalance = tokenBalance.plus(utxoBalance)
+          tokenUtxosToSpend.push(tokenUtxo)
+
+          if (tokenBalance.gte(tokenSendAmount)) {
+            break
+          }
+        }
+        
+        if (!tokenBalance.gte(tokenSendAmount)) {
+          throw new Error('Insufficient tokens')
+        }
+
+        const tokenChangeAmount = tokenBalance.minus(tokenSendAmount)
+
+        let sendOpReturn
+        // Handle multi-output SLP
+        let tokenSendArray = txParams.valueArray ? 
+          txParams.valueArray.map(num => new BigNumber(num)) : [tokenSendAmount]
+
+        if (tokenChangeAmount.isGreaterThan(0)) {
+          tokenSendArray.push(tokenChangeAmount)
+          sendOpReturn = SLPJS.buildSendOpReturn({
+            tokenIdHex: txParams.sendTokenData.tokenId,
+            outputQtyArray: tokenSendArray,
+          })
+        } else {
+          sendOpReturn = SLPJS.buildSendOpReturn({
+            tokenIdHex: txParams.sendTokenData.tokenId,
+            outputQtyArray: tokenSendArray,
+          })
+        }
+
+        const tokenReceiverAddressArray = Array.isArray(to) ? to.slice(0) : [to]
+        if (tokenChangeAmount.isGreaterThan(0)) {
+          tokenReceiverAddressArray.push(tokenChangeAddress)
+        }
+        
+        const transactionBuilder = new bitbox.TransactionBuilder('mainnet')
+        
+        // SLP data output
+        transactionBuilder.addOutput(sendOpReturn, 0)
+
+        // Token destination output
+        if(to) {
+          if(Array.isArray(to)) {
+            for(const addr of to) {
+              transactionBuilder.addOutput(addr, 546)
+            }
+          } else {
+            transactionBuilder.addOutput(to, 546)
+          }
+        }
+
+        // Return remaining token balance output
+        if (tokenChangeAmount.isGreaterThan(0)) {
+          transactionBuilder.addOutput(tokenChangeAddress, 546)
+        }
+        
+        // Return remaining bch balance output
+        // transactionBuilder.addOutput(from, satoshisRemaining + 546)
+
+        const hex = transactionBuilder.transaction.buildIncomplete().toHex()
+        // Define txid
+        var txid
+    
+        // Begin BIP70 SLP
+        // send the payment transaction
+        var payment = new PaymentProtocol().makePayment()
+        payment.set(
+          'merchant_data',
+          Buffer.from(JSON.stringify({
+            "version":1,
+            "address":"simpleledger:qrxj0mftnsrl63uqwn2jcsxvwymgxm7sev7dyx7hrr",
+            "weight":365,
+            "transactionttl":30,
+            "stamps":[
+               {
+                  "name":"Spice Token",
+                  "symbol":"SPICE",
+                  "tokenId":"4de69e374a8ed21cbddd47f2338cc0f479dc58daa2bbe11cd604ca488eca0ddf",
+                  "decimals":8,
+                  "rate":727418066
+               },
+               {
+                  "name":"Honest Coin",
+                  "symbol":"USDH",
+                  "tokenId":"c4b0d62156b3fa5c8f3436079b5394f7edc1bef5dc1cd2f9d0c4d46f82cca479",
+                  "decimals":2,
+                  "rate":1
+               },
+               {
+                  "name":"POP",
+                  "symbol":"POP",
+                  "tokenId":"7c5ac3b9364c0894af7847c24631cd5a95f22b22c7c661c8b2fd02211d4edaf1",
+                  "decimals":3,
+                  "rate":1
+               }
+            ]
+         }), 'utf-8')
+        )
+        payment.set('transactions', [Buffer.from(hex, 'hex')])
+
+        // calculate refund script pubkey from change address
+        //const refundPubkey = SLP.ECPair.toPublicKey(keyPair)
+        //const refundHash160 = SLP.Crypto.hash160(Buffer.from(refundPubkey))
+        const addressType = SLP.Address.detectAddressType(tokenChangeAddress)
+        const addressFormat = SLP.Address.detectAddressFormat(tokenChangeAddress)
+        var refundHash160 = SLP.Address.cashToHash160(tokenChangeAddress)
+        var encodingFunc = SLP.Script.pubKeyHash.output.encode
+        if (addressType == 'p2sh')
+          encodingFunc = SLP.Script.scriptHash.output.encode
+        if (addressFormat == 'legacy')
+          refundHash160 = SLP.Address.legacyToHash160(tokenChangeAddress)
+        const refundScriptPubkey = encodingFunc(
+          Buffer.from(refundHash160, 'hex')
+        )
+
+        // define the refund outputs
+        var refundOutputs = []
+        var refundOutput = new PaymentProtocol().makeOutput()
+        refundOutput.set('amount', 0)
+        refundOutput.set('script', refundScriptPubkey)
+        refundOutputs.push(refundOutput.message)
+        payment.set('refund_to', refundOutputs)
+        payment.set('memo', '')
+
+        // serialize and send
+        const rawbody = payment.serialize()
+        const headers = {
+          Accept:
+            'application/simpleledger-paymentrequest, application/simpleledger-paymentack',
+          'Content-Type': 'application/simpleledger-payment',
+          'Content-Transfer-Encoding': 'binary',
+        }
+        const response = await axios.post(
+          txParams.postOfficeUrl,
+          rawbody,
+          {
+            headers,
+            responseType: 'blob',
+          }
+        )
+
+        const responseTxHex = await this.decodePaymentResponse(response.data)
+        txid = this.txidFromHex(responseTxHex)
 
         resolve(txid)
       } catch (err) {
