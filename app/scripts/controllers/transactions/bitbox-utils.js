@@ -10,7 +10,7 @@ const axios = require('axios')
 const toBuffer = require('blob-to-buffer')
 
 class BitboxUtils {
-  static async getLargestUtxo (address) {
+  static async getLargestUtxo(address) {
     return new Promise((resolve, reject) => {
       SLP.Address.utxo(address).then(
         result => {
@@ -30,7 +30,7 @@ class BitboxUtils {
     })
   }
 
-  static async getAllUtxo (address) {
+  static async getAllUtxo(address) {
     return new Promise((resolve, reject) => {
       SLP.Address.utxo(address).then(
         result => {
@@ -51,7 +51,7 @@ class BitboxUtils {
     })
   }
 
-  static async getTransactionDetails (txid) {
+  static async getTransactionDetails(txid) {
     return new Promise((resolve, reject) => {
       SLP.Transaction.details(txid).then(
         result => {
@@ -68,7 +68,7 @@ class BitboxUtils {
     })
   }
 
-  static encodeOpReturn (dataArray) {
+  static encodeOpReturn(dataArray) {
     const script = [SLP.Script.opcodes.OP_RETURN]
     dataArray.forEach(data => {
       if (typeof data === 'string' && data.substring(0, 2) === '0x') {
@@ -80,7 +80,7 @@ class BitboxUtils {
     return SLP.Script.encode(script)
   }
 
-  static async publishTx (hex) {
+  static async publishTx(hex) {
     return new Promise((resolve, reject) => {
       SLP.RawTransactions.sendRawTransaction(hex).then(
         result => {
@@ -105,7 +105,7 @@ class BitboxUtils {
     })
   }
 
-  static signAndPublishBchTransaction (txParams, spendableUtxos) {
+  static signAndPublishBchTransaction(txParams, spendableUtxos) {
     return new Promise(async (resolve, reject) => {
       try {
         const from = txParams.from
@@ -207,7 +207,7 @@ class BitboxUtils {
     })
   }
 
-  static txidFromHex (hex) {
+  static txidFromHex(hex) {
     const buffer = Buffer.from(hex, 'hex')
     const hash = SLP.Crypto.hash256(buffer).toString('hex')
     const txid = hash
@@ -368,7 +368,7 @@ class BitboxUtils {
     })
   }
 
-  static signAndPublishSlpTransaction (
+  static signAndPublishSlpTransaction(
     txParams,
     spendableUtxos,
     tokenMetadata,
@@ -379,11 +379,15 @@ class BitboxUtils {
       try {
         const from = txParams.from
         // Get to addresses from payment request
-        if(!txParams.to && txParams.paymentRequestUrl) {
+        if (!txParams.to && txParams.paymentRequestUrl) {
           txParams.to = []
           let outputs = txParams.paymentData.outputs
-          for(let i = 1; i < outputs.length; i++) {
-            txParams.to.push(bitbox.Address.fromOutputScript(Buffer.from(outputs[i].script, 'hex')))
+          for (let i = 1; i < outputs.length; i++) {
+            txParams.to.push(
+              bitbox.Address.fromOutputScript(
+                Buffer.from(outputs[i].script, 'hex')
+              )
+            )
           }
         }
         const to = txParams.to
@@ -398,7 +402,7 @@ class BitboxUtils {
             'Amount below minimum for this token. Increase the send amount and try again.'
           )
         }
-        
+
         const sortedSpendableTokenUtxos = spendableTokenUtxos.sort((a, b) => {
           const aQuantity = new BigNumber(a.slp.quantity)
           const bQuantity = new BigNumber(b.slp.quantity)
@@ -418,7 +422,7 @@ class BitboxUtils {
             break
           }
         }
-        
+
         if (!tokenBalance.gte(tokenSendAmount)) {
           throw new Error('Insufficient tokens')
         }
@@ -427,8 +431,9 @@ class BitboxUtils {
 
         let sendOpReturn
         // Handle multi-output SLP
-        let tokenSendArray = txParams.valueArray ? 
-          txParams.valueArray.map(num => new BigNumber(num)) : [tokenSendAmount]
+        let tokenSendArray = txParams.valueArray
+          ? txParams.valueArray.map(num => new BigNumber(num))
+          : [tokenSendAmount]
 
         if (tokenChangeAmount.isGreaterThan(0)) {
           tokenSendArray.push(tokenChangeAmount)
@@ -470,7 +475,7 @@ class BitboxUtils {
             break
           }
         }
-        
+
         const transactionBuilder = new bitbox.TransactionBuilder('mainnet')
         let totalUtxoAmount = 0
         inputUtxos.forEach(utxo => {
@@ -486,14 +491,14 @@ class BitboxUtils {
             'Not enough Bitcoin Cash for fee. Deposit a small amount and try again.'
           )
         }
-        
+
         // SLP data output
         transactionBuilder.addOutput(sendOpReturn, 0)
 
         // Token destination output
-        if(to) {
-          if(Array.isArray(to)) {
-            for(const addr of to) {
+        if (to) {
+          if (Array.isArray(to)) {
+            for (const addr of to) {
               transactionBuilder.addOutput(addr, 546)
             }
           } else {
@@ -505,7 +510,7 @@ class BitboxUtils {
         if (tokenChangeAmount.isGreaterThan(0)) {
           transactionBuilder.addOutput(tokenChangeAddress, 546)
         }
-        
+
         // Return remaining bch balance output
         transactionBuilder.addOutput(from, satoshisRemaining + 546)
 
@@ -523,7 +528,7 @@ class BitboxUtils {
         const hex = transactionBuilder.build().toHex()
         // Define txid
         var txid
-        
+
         // Begin BIP70 SLP
         if (txParams.paymentRequestUrl) {
           // send the payment transaction
@@ -538,7 +543,9 @@ class BitboxUtils {
           //const refundPubkey = SLP.ECPair.toPublicKey(keyPair)
           //const refundHash160 = SLP.Crypto.hash160(Buffer.from(refundPubkey))
           const addressType = SLP.Address.detectAddressType(tokenChangeAddress)
-          const addressFormat = SLP.Address.detectAddressFormat(tokenChangeAddress)
+          const addressFormat = SLP.Address.detectAddressFormat(
+            tokenChangeAddress
+          )
           var refundHash160 = SLP.Address.cashToHash160(tokenChangeAddress)
           var encodingFunc = SLP.Script.pubKeyHash.output.encode
           if (addressType == 'p2sh')
@@ -590,7 +597,7 @@ class BitboxUtils {
     })
   }
 
-  static signAndPublishPostOfficeSlpTransaction (
+  static signAndPublishPostOfficeSlpTransaction(
     txParams,
     spendableUtxos,
     tokenMetadata,
@@ -600,14 +607,6 @@ class BitboxUtils {
     return new Promise(async (resolve, reject) => {
       try {
         const from = txParams.from
-        // Get to addresses from payment request
-        if(!txParams.to && txParams.paymentRequestUrl) {
-          txParams.to = []
-          let outputs = txParams.paymentData.outputs
-          for(let i = 1; i < outputs.length; i++) {
-            txParams.to.push(bitbox.Address.fromOutputScript(Buffer.from(outputs[i].script, 'hex')))
-          }
-        }
         const to = txParams.to
         const tokenDecimals = tokenMetadata.decimals
         const scaledTokenSendAmount = new BigNumber(
@@ -620,7 +619,7 @@ class BitboxUtils {
             'Amount below minimum for this token. Increase the send amount and try again.'
           )
         }
-        
+
         const sortedSpendableTokenUtxos = spendableTokenUtxos.sort((a, b) => {
           const aQuantity = new BigNumber(a.slp.quantity)
           const bQuantity = new BigNumber(b.slp.quantity)
@@ -640,7 +639,7 @@ class BitboxUtils {
             break
           }
         }
-        
+
         if (!tokenBalance.gte(tokenSendAmount)) {
           throw new Error('Insufficient tokens')
         }
@@ -649,8 +648,9 @@ class BitboxUtils {
 
         let sendOpReturn
         // Handle multi-output SLP
-        let tokenSendArray = txParams.valueArray ? 
-          txParams.valueArray.map(num => new BigNumber(num)) : [tokenSendAmount]
+        let tokenSendArray = txParams.valueArray
+          ? txParams.valueArray.map(num => new BigNumber(num))
+          : [tokenSendAmount]
 
         if (tokenChangeAmount.isGreaterThan(0)) {
           tokenSendArray.push(tokenChangeAmount)
@@ -669,16 +669,53 @@ class BitboxUtils {
         if (tokenChangeAmount.isGreaterThan(0)) {
           tokenReceiverAddressArray.push(tokenChangeAddress)
         }
-        
+
+        const sortedSpendableUtxos = spendableUtxos.sort((a, b) => {
+          return b.satoshis - a.satoshis
+        })
+
+        let byteCount = 0
+        let inputSatoshis = 0
+        const inputUtxos = tokenUtxosToSpend
+        for (const utxo of sortedSpendableUtxos) {
+          inputSatoshis = inputSatoshis + utxo.satoshis
+          inputUtxos.push(utxo)
+
+          byteCount = SLPJS.calculateSendCost(
+            sendOpReturn.length,
+            inputUtxos.length,
+            tokenReceiverAddressArray.length + 1, // +1 to receive remaining BCH
+            from
+          )
+
+          if (inputSatoshis >= byteCount) {
+            break
+          }
+        }
+
         const transactionBuilder = new bitbox.TransactionBuilder('mainnet')
-        
+        let totalUtxoAmount = 0
+        inputUtxos.forEach(utxo => {
+          transactionBuilder.addInput(utxo.txid, utxo.vout)
+          totalUtxoAmount += utxo.satoshis
+        })
+
+        const satoshisRemaining = totalUtxoAmount - byteCount
+
+        // Verify sufficient fee
+        if (satoshisRemaining < 0) {
+          throw new Error(
+            'Not enough Bitcoin Cash for fee. Deposit a small amount and try again.'
+          )
+        }
+
         // SLP data output
         transactionBuilder.addOutput(sendOpReturn, 0)
 
         // Token destination output
-        if(to) {
-          if(Array.isArray(to)) {
-            for(const addr of to) {
+        if (to) {
+          if (Array.isArray(to)) {
+            for (const addr of to) {
               transactionBuilder.addOutput(addr, 546)
             }
           } else {
@@ -690,48 +727,66 @@ class BitboxUtils {
         if (tokenChangeAmount.isGreaterThan(0)) {
           transactionBuilder.addOutput(tokenChangeAddress, 546)
         }
-        
+
         // Return remaining bch balance output
         // transactionBuilder.addOutput(from, satoshisRemaining + 546)
 
-        const hex = transactionBuilder.transaction.buildIncomplete().toHex()
+        let redeemScript
+        inputUtxos.forEach((utxo, index) => {
+          transactionBuilder.sign(
+            index,
+            utxo.keyPair,
+            redeemScript,
+            transactionBuilder.hashTypes.SIGHASH_ALL | transactionBuilder.hashTypes.SIGHASH_ANYONECANPAY,
+            utxo.satoshis
+          )
+        })
+
+        const hex = transactionBuilder.build().toHex()
         // Define txid
         var txid
-    
+
         // Begin BIP70 SLP
         // send the payment transaction
         var payment = new PaymentProtocol().makePayment()
         payment.set(
           'merchant_data',
-          Buffer.from(JSON.stringify({
-            "version":1,
-            "address":"simpleledger:qrxj0mftnsrl63uqwn2jcsxvwymgxm7sev7dyx7hrr",
-            "weight":365,
-            "transactionttl":30,
-            "stamps":[
-               {
-                  "name":"Spice Token",
-                  "symbol":"SPICE",
-                  "tokenId":"4de69e374a8ed21cbddd47f2338cc0f479dc58daa2bbe11cd604ca488eca0ddf",
-                  "decimals":8,
-                  "rate":727418066
-               },
-               {
-                  "name":"Honest Coin",
-                  "symbol":"USDH",
-                  "tokenId":"c4b0d62156b3fa5c8f3436079b5394f7edc1bef5dc1cd2f9d0c4d46f82cca479",
-                  "decimals":2,
-                  "rate":1
-               },
-               {
-                  "name":"POP",
-                  "symbol":"POP",
-                  "tokenId":"7c5ac3b9364c0894af7847c24631cd5a95f22b22c7c661c8b2fd02211d4edaf1",
-                  "decimals":3,
-                  "rate":1
-               }
-            ]
-         }), 'utf-8')
+          Buffer.from(
+            JSON.stringify({
+              version: 1,
+              address:
+                'simpleledger:qrxj0mftnsrl63uqwn2jcsxvwymgxm7sev7dyx7hrr',
+              weight: 365,
+              transactionttl: 30,
+              stamps: [
+                {
+                  name: 'Spice Token',
+                  symbol: 'SPICE',
+                  tokenId:
+                    '4de69e374a8ed21cbddd47f2338cc0f479dc58daa2bbe11cd604ca488eca0ddf',
+                  decimals: 8,
+                  rate: 727418066,
+                },
+                {
+                  name: 'Honest Coin',
+                  symbol: 'USDH',
+                  tokenId:
+                    'c4b0d62156b3fa5c8f3436079b5394f7edc1bef5dc1cd2f9d0c4d46f82cca479',
+                  decimals: 2,
+                  rate: 1,
+                },
+                {
+                  name: 'POP',
+                  symbol: 'POP',
+                  tokenId:
+                    '7c5ac3b9364c0894af7847c24631cd5a95f22b22c7c661c8b2fd02211d4edaf1',
+                  decimals: 3,
+                  rate: 1,
+                },
+              ],
+            }),
+            'utf-8'
+          )
         )
         payment.set('transactions', [Buffer.from(hex, 'hex')])
 
@@ -739,7 +794,9 @@ class BitboxUtils {
         //const refundPubkey = SLP.ECPair.toPublicKey(keyPair)
         //const refundHash160 = SLP.Crypto.hash160(Buffer.from(refundPubkey))
         const addressType = SLP.Address.detectAddressType(tokenChangeAddress)
-        const addressFormat = SLP.Address.detectAddressFormat(tokenChangeAddress)
+        const addressFormat = SLP.Address.detectAddressFormat(
+          tokenChangeAddress
+        )
         var refundHash160 = SLP.Address.cashToHash160(tokenChangeAddress)
         var encodingFunc = SLP.Script.pubKeyHash.output.encode
         if (addressType == 'p2sh')
@@ -767,14 +824,10 @@ class BitboxUtils {
           'Content-Type': 'application/simpleledger-payment',
           'Content-Transfer-Encoding': 'binary',
         }
-        const response = await axios.post(
-          txParams.postOfficeUrl,
-          rawbody,
-          {
-            headers,
-            responseType: 'blob',
-          }
-        )
+        const response = await axios.post(txParams.postOfficeUrl, rawbody, {
+          headers,
+          responseType: 'blob',
+        })
 
         const responseTxHex = await this.decodePaymentResponse(response.data)
         txid = this.txidFromHex(responseTxHex)

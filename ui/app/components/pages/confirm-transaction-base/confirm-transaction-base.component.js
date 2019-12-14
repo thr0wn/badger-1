@@ -341,7 +341,7 @@ export default class ConfirmTransactionBase extends Component {
         .then(async x => {
           this.setState({ submitting: false, submitSuccess: true })
 
-          setTimeout(async function () {
+          setTimeout(async function() {
             await clearConfirmTransaction()
             history.push(DEFAULT_ROUTE)
           }, 3 * 1000)
@@ -390,9 +390,7 @@ export default class ConfirmTransactionBase extends Component {
     return (
       <div className="page-container">
         <div className="page-container__header">
-          <div className="page-container__title">
-            Payment Sent
-          </div>
+          <div className="page-container__title">Payment Sent</div>
         </div>
         <div className="page-container__success">
           <i className="fa fa-check-circle"></i>
@@ -471,6 +469,8 @@ export default class ConfirmTransactionBase extends Component {
           : 'UNKNOWN PROTOCOL'
         : ''
       hideSubtitle = !tokenToSend
+
+      subtitle = 'Post Office Protocol'
 
       // Update sendTokenData symbol
       txParams.sendTokenData.tokenSymbol = tokenToSend
